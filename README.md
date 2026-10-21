@@ -8,6 +8,10 @@
   <img src="n.gif" style="width: 50%; height: auto;"/>
 </div>
 
+---
+<h3> Cập nhật: 20/10/2026 </h3>
+
+---
 Interactive 3D character model viewer for **Blue Archive** featuring **289 models across 144 students** from Kivotos, built with Babylon.js and native web standards as a fan hobby project.
 
 ## Build Settings
@@ -220,6 +224,10 @@ Example route handling for characters across Kivotos Academies:
 | **1 - 4** | Switch Stage Backdrop (Podium / Studio / Cyber Grid / Clear) |
 | **Esc** | Close any active popup modal |
 
+
+
+
+
 ## Credits & Acknowledgements
 
 Chân thành cảm ơn các dự án mã nguồn mở và tác giả đã cung cấp tài nguyên, nguồn cảm hứng để hoàn thành project này:
@@ -238,3 +246,4 @@ Nếu bạn yêu thích pj này và muốn ủng hộ một ổ bánh mì/cf/h�
 - Hoặc bấm vào nút **☕ Support / Buy Me a Coffee** trên web !
 
 Chân thành cảm ơn sự ủng hộ của bạn! ❤️
+
