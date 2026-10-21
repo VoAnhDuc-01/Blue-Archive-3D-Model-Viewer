@@ -7,10 +7,10 @@
 ###
 
 <div align="center">
-  <img src="banner.jpeg?raw=true" style="max-width: 70%; height: auto;"/>
+  <img src="https://files.catbox.moe/ov3gsg.jpg" style="max-width: 70%; height: auto;"/>
 </div>
 
-### https://github.com/noname0310/babylon-mmd/
+# https://github.com/noname0310/babylon-mmd/
 
 Interactive 3D character model viewer for **Blue Archive** featuring **289 models across 144 students** from Kivotos, built with Babylon.js and native web standards as a fan hobby project.
 
