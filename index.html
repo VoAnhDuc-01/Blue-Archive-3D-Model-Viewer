@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Blue Archive 3D Model Viewer - Interactive character viewer with 289 models across 144 students.">
+    <meta name="theme-color" content="#00adef">
+    <title>Blue Archive 3D Model Viewer // Kivotos Archive</title>
+    
+    <!-- Kivotos Halo Favicon -->
+    <link rel="icon" type="image/webp" href="favicon.webp">
+    <link rel="shortcut icon" href="favicon.webp">
+    <link rel="apple-touch-icon" href="favicon.webp">
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Babylon.js Core & glTF Loaders from CDN -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+
+    <!-- Student Roster Data -->
+    <script src="students-data.js"></script>
+</head>
+<body class="dark-mode">
+    <!-- 3D WebGL Canvas (Full window, pointer-events: auto) -->
+    <canvas id="renderCanvas" tabindex="1" aria-label="3D Model Canvas"></canvas>
+
+    <!-- App UI Layer (pointer-events: none) -->
+    <div id="app">
+        <!-- Top-Left Toolbar (50px icons with 10px gaps, completely self-contained in res/) -->
+        <nav class="toolbar-column fadeable" aria-label="Main Toolbar">
+            <!-- Row 0, Col 0: Menu Button (3 Horizontal Bars) -> Opens Student Roster Modal -->
+            <button id="btnMenu" class="tool-icon-btn" style="left: 10px; top: 10px;" title="Danh Sách Học Sinh [M]" aria-label="Open student roster">
+                <svg class="menu-bars-svg" viewBox="0 0 24 24">
+                    <line x1="3" y1="5" x2="21" y2="5" stroke="#00adef" stroke-width="2.8" stroke-linecap="round"/>
+                    <line x1="3" y1="12" x2="21" y2="12" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round"/>
+                    <line x1="3" y1="19" x2="21" y2="19" stroke="#ff477e" stroke-width="2.8" stroke-linecap="round"/>
+                </svg>
+            </button>
+
+            <!-- Row 0, Col 1: Dark / Light Mode Toggle -->
+            <button id="btnTheme" class="tool-icon-btn" style="left: 60px; top: 10px;" title="Đổi Giao Diện Sáng / Tối [D]" aria-label="Toggle theme">
+                <img id="imgThemeDark" src="res/assets/light_mode.png" alt="Light Mode" class="icon-img">
+                <img id="imgThemeLight" src="res/assets/dark_mode.png" alt="Dark Mode" class="icon-img" style="display: none;">
+            </button>
+
+            <!-- Row 1, Col 0: Stage Backdrop Toggle -->
+            <button id="btnStage" class="tool-icon-btn" style="left: 10px; top: 60px;" title="Đổi Sân Khấu (Bục / Studio / Lưới / Trong suốt) [1-4]" aria-label="Switch stage backdrop">
+                <img src="res/logo/Prime_Student_Council_Icon.webp" alt="Stage" class="icon-img stage-crest">
+            </button>
+
+            <!-- Row 1, Col 1: Costume / Skin Cycle (Alter) -->
+            <button id="btnSkin" class="tool-icon-btn" style="left: 60px; top: 60px;" title="Đổi Trang Phục Kế Tiếp / Alter [C]" aria-label="Cycle student costume">
+                <img id="imgSkin" src="res/assets/alter_light.png" alt="Alter" class="icon-img">
+                <span id="skinCountBadge" class="skin-badge" style="display: none;">1</span>
+            </button>
+
+            <!-- Row 2, Col 0: Motion / Animation Selector Toggle -->
+            <button id="btnMotion" class="tool-icon-btn" style="left: 10px; top: 110px;" title="Bật / Tắt Thanh Động Tác (Playbar)" aria-label="Toggle motion panel">
+                <img id="imgMotion" src="res/assets/note_light.png" alt="Motion" class="icon-img">
+            </button>
+
+            <!-- Row 2, Col 1: Add / Remove Partner Student (Dual Mode) -->
+            <button id="btnAddPartner" class="tool-icon-btn" style="left: 60px; top: 110px;" title="Ghép Đôi 2 Học Sinh (Dual Mode)" aria-label="Add or remove partner">
+                <img id="imgAddPartner" src="res/assets/add_light.png" alt="Add Partner" class="icon-img">
+                <img id="imgRemovePartner" src="res/assets/delete_light.png" alt="Remove Partner" class="icon-img" style="display: none;">
+            </button>
+
+            <!-- Row 3, Col 0: Turntable 360° Spin -->
+            <button id="btnTurntable" class="tool-icon-btn" style="left: 10px; top: 160px;" title="Tự Động Xoay 360° [T]" aria-label="Toggle turntable">
+                <img id="imgTurntable" src="res/assets/physics_light.png" alt="Turntable" class="icon-img">
+            </button>
+
+            <!-- Row 3, Col 1: Reset Camera View -->
+            <button id="btnResetCamera" class="tool-icon-btn" style="left: 60px; top: 160px;" title="Đặt Lại Góc Nhìn Camera [R]" aria-label="Reset camera">
+                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 16.03 20 14.57 20 13c0-4.42-3.58-8-8-8zm-6.76.74L3.78 7.2C4.46 5.97 5.46 4.97 6.69 4.29L5.24 2.84C3.65 3.86 2.37 5.25 1.54 6.89l1.7.75zM12 19c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 8.74C4.46 9.97 4 11.43 4 13c0 4.42 3.58 8 8 8v4l5-5-5-5v4z"/></svg>
+            </button>
+
+            <!-- Row 4, Col 0: Turnaround Reference Sheet Dossier -->
+            <button id="btnReference" class="tool-icon-btn" style="left: 10px; top: 210px;" title="Xuất Hồ Sơ 4 Góc Nhìn (Dossier Sheet)" aria-label="Generate reference sheet">
+                <img id="imgReference" src="res/assets/reference_light.png" alt="Reference Sheet" class="icon-img">
+            </button>
+
+            <!-- Row 4, Col 1: Wireframe Toggle -->
+            <button id="btnWireframe" class="tool-icon-btn" style="left: 60px; top: 210px;" title="Bật / Tắt Khung Lưới Đa Giác (Wireframe)" aria-label="Toggle wireframe">
+                <svg class="icon-svg" viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18s-.41-.06-.57-.18l-7.9-4.44A.991.991 0 0 1 3 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18s.41.06.57.18l7.9 4.44c.32.17.53.5.53.88v9zM12 4.15L6.04 7.5 12 10.85l5.96-3.35L12 4.15zM5 8.95v6.7l6 3.38v-6.71L5 8.95zm14 6.7V8.95l-6 3.37v6.71l6-3.38z"/></svg>
+            </button>
+        </nav>
+
+        <!-- Character Name Overlay (Beside toolbar at left: 120px; top: 35px;) -->
+        <header id="charNameOverlay" class="char-name-overlay fadeable" aria-label="Current Student Info">
+            <div class="name-row">
+                <h1 id="charPrimaryName" class="primary-name">Yuuka</h1>
+                <span id="charPartnerName" class="partner-name" style="display: none;">+ Kei</span>
+            </div>
+            
+            <div class="meta-row">
+                <span id="charSchoolTag" class="school-pill school-Millennium">Millennium Science School</span>
+                
+                <!-- Direct clickable costume buttons for instant switching on the fly -->
+                <div id="costumePills" class="costume-pills-wrap"></div>
+            </div>
+        </header>
+
+        <!-- Top Right Brand & Support Area -->
+        <aside class="top-right-brand fadeable">
+            <button id="btnBaLogo" class="ba-logo-btn" title="Blue Archive // Kivotos Archive" aria-label="Blue Archive Info">
+                <img src="res/logo/blue-archive-logo-png_seeklogo-476404.png" alt="Blue Archive Logo" class="ba-main-logo">
+            </button>
+            <button id="btnSupport" class="tool-icon-btn support-btn" title="Buy Me a Coffee // Ủng Hộ Tác Giả" aria-label="Buy Me a Coffee">
+                <img src="res/assets/support.png" alt="Buy Me a Coffee" class="icon-img">
+            </button>
+        </aside>
+
+        <!-- Animation & Music Playbar Panel (Docked at bottom) -->
+        <section id="trackPanel" class="track-panel fadeable" aria-label="Animation & Audio Controls">
+            <!-- Row 1: Play/Pause, Scrubber, Time Display -->
+            <div class="track-row-main">
+                <button id="btnPlayPause" class="track-play-btn" title="Play / Pause Animation [Space]" aria-label="Play or pause animation">
+                    <svg id="iconPlay" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="iconPause" viewBox="0 0 24 24" style="display: none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+
+                <div class="timeline-container">
+                    <input type="range" id="timelineSlider" class="timeline-slider" min="0" max="100" value="0" step="0.1" aria-label="Animation timeline">
+                </div>
+
+                <div id="timeCounter" class="track-time-counter">00:00 / 00:00</div>
+            </div>
+
+            <!-- Row 2: Animation Dropdown Selector, Speed, Loop, BGM Music Selector -->
+            <div class="track-row-sub">
+                <!-- Animation selector -->
+                <div class="anim-select-wrap">
+                    <svg class="anim-icon" viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+                    <select id="animSelect" class="anim-select-dropdown" aria-label="Select motion">
+                        <option value="">No Animation</option>
+                    </select>
+                </div>
+
+                <!-- BGM Music selector -->
+                <div class="bgm-select-wrap">
+                    <svg class="bgm-icon" viewBox="0 0 24 24"><path d="M12 3v9.28c-.47-.17-.97-.28-1.5-.28C8.01 12 6 14.01 6 16.5S8.01 21 10.5 21c2.31 0 4.2-1.75 4.45-4H15V6h4V3h-7z"/></svg>
+                    <select id="bgmSelect" class="bgm-select-dropdown" aria-label="Select BGM music">
+                        <option value="">🎵 BGM: Tắt / Off</option>
+                        <option value="res/audio/Na na na na Anh Do Mixi.mp3">🔥 Na na na na Anh Do Mixi</option>
+                        <option value="res/audio/music001.mp3">Specialist</option>
+                        <option value="res/audio/MMDClassic.mp3">Classic</option>
+                        <option value="res/audio/Show.mp3">Show (Ado)</option>
+                        <option value="res/audio/MoeChakkaFire.mp3">MoeChakkaFire</option>
+                        <option value="res/audio/恋爱循环.mp3">Renai Circulation</option>
+                        <option value="res/audio/热爱105C的你.mp3">Super Idol 105°C</option>
+                        <option value="res/audio/Bgm.wav">I Want You Back</option>
+                    </select>
+                </div>
+
+                <!-- Speed, Loop, Hide -->
+                <div class="track-sub-actions">
+                    <button id="btnSpeed" class="pill-btn" data-speed="1.0" title="Tốc Độ Phát">1.0x</button>
+                    <button id="btnLoop" class="pill-btn active" title="Lặp Lại">Loop</button>
+                    <button id="btnTogglePlaybar" class="pill-btn hide-btn" title="Ẩn Thanh Điều Khiển">Hide</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Floating Quick View Guide (Bottom-Left) -->
+        <footer class="view-hints-pill fadeable">
+            <span>🖱️ Chuột trái: <b>Xoay 360°</b></span>
+            <span>Chuột phải: <b>Kéo Pan</b></span>
+            <span>Cuộn chuột: <b>Zoom</b></span>
+            <span>[M] <b>Danh Sách</b></span>
+            <span>[C] <b>Đổi Áo</b></span>
+        </footer>
+    </div>
+
+    <!-- Student Selection Roster Modal (Opened when clicking the 3 horizontal bars) -->
+    <div id="characterPanel" class="char-modal-backdrop" aria-modal="true" role="dialog">
+        <div class="char-modal-dialog">
+            <!-- Modal Header -->
+            <header class="modal-top-bar">
+                <div class="modal-branding">
+                    <img src="res/logo/Prime_Student_Council_Icon.webp" alt="Schale Crest" class="modal-crest">
+                    <div class="modal-titles">
+                        <h2 class="modal-title-main">DANH SÁCH HỌC SINH KIVOTOS</h2>
+                        <span id="modalModeSubtitle" class="modal-title-sub">BẤM VÀO MODEL ĐỂ HIỂN THỊ NGAY</span>
+                    </div>
+                </div>
+                <img src="res/logo/Blue_Archive_logo_JP.png" alt="Blue Archive JP Logo" class="modal-ba-logo">
+                <button id="modalCloseBtn" class="modal-close-icon" title="Đóng [Esc]" aria-label="Close roster panel">✕</button>
+            </header>
+
+            <!-- Direct School Filter Tabs (No complicated search box - click tab to see students immediately) -->
+            <nav id="schoolTabs" class="school-tabs-bar" aria-label="School Filter Tabs">
+                <button class="school-tab-btn active" data-school="All">Tất Cả (144 Học Sinh)</button>
+                <button class="school-tab-btn" data-school="Millennium">Millennium</button>
+                <button class="school-tab-btn" data-school="Trinity">Trinity</button>
+                <button class="school-tab-btn" data-school="Gehenna">Gehenna</button>
+                <button class="school-tab-btn" data-school="Abydos">Abydos</button>
+                <button class="school-tab-btn" data-school="Hyakkiyako">Hyakkiyako</button>
+                <button class="school-tab-btn" data-school="Shanhaijing">Shanhaijing</button>
+                <button class="school-tab-btn" data-school="Red Winter">Red Winter</button>
+                <button class="school-tab-btn" data-school="SRT">SRT</button>
+                <button class="school-tab-btn" data-school="Arius">Arius</button>
+                <button class="school-tab-btn" data-school="Valkyrie">Valkyrie</button>
+                <button class="school-tab-btn" data-school="Highlander">Highlander</button>
+                <button class="school-tab-btn" data-school="Other / Collab">Khác / Hợp Tác</button>
+            </nav>
+
+            <!-- Students & Models Grid (Straightforward cards with instant model buttons) -->
+            <main id="studentGrid" class="students-grid-container" tabindex="0"></main>
+
+            <!-- Bottom Gutter -->
+            <footer class="modal-bottom-bar">
+                <span id="rosterCountText">289 models 3D từ 144 học sinh</span>
+                <span class="badge-schale">KIVOTOS SCHALE ARCHIVE</span>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Help & Navigation Controls Modal -->
+    <div id="helpModal" class="char-modal-backdrop" aria-modal="true" role="dialog">
+        <div class="char-modal-dialog help-dialog">
+            <header class="modal-top-bar">
+                <div class="modal-branding">
+                    <img src="res/logo/Prime_Student_Council_Icon.webp" alt="Schale Crest" class="modal-crest">
+                    <div class="modal-titles">
+                        <h2 class="modal-title-main">HƯỚNG DẪN ĐIỀU KHIỂN & PHÍM TẮT</h2>
+                        <span class="modal-title-sub">BLUE ARCHIVE 3D MODEL VIEWER</span>
+                    </div>
+                </div>
+                <button id="helpCloseBtn" class="modal-close-icon" aria-label="Close help">✕</button>
+            </header>
+
+            <div class="help-content-body">
+                <div class="help-section">
+                    <h3>🎮 Điều Khiển Chuột & Cảm Ứng</h3>
+                    <ul class="help-list">
+                        <li><b>Chuột Trái Kéo Thả:</b> Xoay 360° góc nhìn tự do quanh học sinh.</li>
+                        <li><b>Chuột Phải / Chuột Giữa Kéo Thả:</b> Di chuyển (Pan) camera lên, xuống, trái, phải.</li>
+                        <li><b>Cuộn Chuột (Scroll):</b> Phóng to / thu nhỏ camera mượt mà.</li>
+                        <li><b>Màn Hình Cảm Ứng:</b> 1 ngón xoay góc nhìn, 2 ngón phóng to/thu nhỏ và di chuyển.</li>
+                    </ul>
+                </div>
+
+                <div class="help-section">
+                    <h3>⌨️ Phím Tắt Bàn Phím</h3>
+                    <div class="shortcuts-grid">
+                        <div class="shortcut-item"><kbd>M</kbd> <span>Mở Danh Sách Học Sinh (Menu 3 gạch)</span></div>
+                        <div class="shortcut-item"><kbd>C</kbd> / <kbd>A</kbd> <span>Đổi Trang Phục Kế Tiếp (Alter)</span></div>
+                        <div class="shortcut-item"><kbd>Space</kbd> <span>Tạm Dừng / Tiếp Tục Animation</span></div>
+                        <div class="shortcut-item"><kbd>T</kbd> <span>Bật / Tắt Tự Động Xoay 360° (Turntable)</span></div>
+                        <div class="shortcut-item"><kbd>R</kbd> <span>Đặt Lại Góc Nhìn Camera Chính Diện</span></div>
+                        <div class="shortcut-item"><kbd>D</kbd> <span>Chuyển Đổi Giao Diện Tối / Sáng</span></div>
+                        <div class="shortcut-item"><kbd>1</kbd> - <kbd>4</kbd> <span>Đổi Sân Khấu (Bục, Studio, Lưới, Trong Suốt)</span></div>
+                        <div class="shortcut-item"><kbd>Esc</kbd> <span>Đóng Cửa Sổ Bảng Chọn</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="modal-bottom-bar">
+                <span>Blue Archive © NEXON Games & Yostar. Non-commercial 3D fan viewer.</span>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Buy Me a Coffee Modal -->
+    <div id="coffeeModal" class="char-modal-backdrop" aria-modal="true" role="dialog">
+        <div class="char-modal-dialog coffee-dialog">
+            <header class="modal-top-bar">
+                <div class="modal-branding">
+                    <span class="coffee-header-icon">☕</span>
+                    <div class="modal-titles">
+                        <h2 class="modal-title-main">BUY ME A COFFEE // ỦNG HỘ TÁC GIẢ</h2>
+                        <span class="modal-title-sub">KIVOTOS SCHALE ARCHIVE DONATION</span>
+                    </div>
+                </div>
+                <button id="coffeeCloseBtn" class="modal-close-icon" aria-label="Close coffee modal">✕</button>
+            </header>
+
+            <div class="coffee-content-body">
+                <div class="coffee-card-main">
+                    <div class="coffee-qr-wrap">
+                        <img src="img/stk.png" alt="Mã QR Chuyển Khoản STK" class="coffee-qr-img" onerror="this.onerror=null; this.src='img/stk.jpg';">
+                        <span class="coffee-qr-tip">Quét mã QR qua App Ngân hàng</span>
+                    </div>
+
+                    <div class="coffee-bank-info">
+                        <div class="bank-field">
+                            <span class="bank-label">NGÂN HÀNG / BANK</span>
+                            <span class="bank-value bank-highlight">Vietcombank</span>
+                        </div>
+                        <div class="bank-field">
+                            <span class="bank-label">CHỦ TÀI KHOẢN / ACCOUNT NAME</span>
+                            <span class="bank-value name-highlight">VO ANH DUC</span>
+                        </div>
+                        <div class="bank-field stk-field">
+                            <span class="bank-label">SỐ TÀI KHOẢN / ACCOUNT NUMBER</span>
+                            <div class="stk-copy-row">
+                                <span id="stkNumber" class="stk-number">1828517809</span>
+                                <button id="btnCopyStk" class="btn-copy-stk" title="Sao chép số tài khoản">
+                                    <svg viewBox="0 0 24 24" width="15" height="15"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                                    Sao chép
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="coffee-gratitude-box">
+                    <p class="coffee-thanks-text">
+                        💙 <b>Lời Cảm Ơn Chân Thành:</b><br>
+                        Cảm ơn bạn đã ghé thăm và trải nghiệm <b>Blue Archive 3D Model Viewer</b>!
+                        Mỗi tách cà phê ủng hộ từ bạn là nguồn động lực to lớn giúp mình tiếp tục bảo trì, hoàn thiện tính năng và cập nhật thêm nhiều mô hình học sinh mới cho cộng đồng. Chúc Thầy giáo (Sensei) luôn có những phút giây thư giãn tuyệt vời tại Kivotos!
+                    </p>
+                </div>
+            </div>
+
+            <footer class="modal-bottom-bar">
+                <span>Cảm ơn sự ủng hộ và đồng hành của bạn! ❤️</span>
+                <span class="badge-schale">KIVOTOS COFFEE CLUB</span>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Loading Screen Overlay -->
+    <div id="loadingOverlay" class="loading-overlay-screen visible">
+        <div class="loading-halo-widget">
+            <div class="halo-circle outer"></div>
+            <div class="halo-circle inner"></div>
+            <div class="halo-wings">
+                <svg viewBox="0 0 24 24"><path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/></svg>
+            </div>
+        </div>
+        <div class="loading-text-group">
+            <h2 id="loadingTitle" class="loading-title">INITIALIZING KIVOTOS ARCHIVE...</h2>
+            <p id="loadingSubtitle" class="loading-subtitle">Configuring 3D Engine & Camera Pipeline</p>
+        </div>
+        <div class="loading-bar-track">
+            <div id="loadingBarFill" class="loading-bar-thumb"></div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="toastContainer" class="toast-stack"></div>
+
+    <!-- Application Script -->
+    <script src="app.js"></script>
+</body>
+</html>
