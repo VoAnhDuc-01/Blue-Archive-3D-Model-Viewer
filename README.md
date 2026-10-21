@@ -4,7 +4,6 @@
 
 </div>
 
-###
 
 <div align="center">
   <img src="https://files.catbox.moe/ov3gsg.jpg" style="max-width: 70%; height: auto;"/>
