@@ -6,7 +6,7 @@
 
 
 <div align="center">
-  <img src="n.jpg" style="width: 50%; height: auto;"/>
+  <img src="n.gif" style="width: 50%; height: auto;"/>
 </div>
 
 # https://github.com/noname0310/babylon-mmd/
