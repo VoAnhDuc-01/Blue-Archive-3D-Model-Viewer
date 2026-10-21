@@ -1,15 +1,12 @@
 <div align="center">
 
-<h3> Blue Archive 3D Model Viewer // Kivotos Archive </h3>
+<h3> Blue Archive 3D Model Viewer </h3>
 
 </div>
-
 
 <div align="center">
   <img src="n.gif" style="width: 50%; height: auto;"/>
 </div>
-
-# https://github.com/noname0310/babylon-mmd/
 
 Interactive 3D character model viewer for **Blue Archive** featuring **289 models across 144 students** from Kivotos, built with Babylon.js and native web standards as a fan hobby project.
 
@@ -223,13 +220,21 @@ Example route handling for characters across Kivotos Academies:
 | **1 - 4** | Switch Stage Backdrop (Podium / Studio / Cyber Grid / Clear) |
 | **Esc** | Close any active popup modal |
 
+## Credits & Acknowledgements
+
+Chân thành cảm ơn các dự án mã nguồn mở và tác giả đã cung cấp tài nguyên, nguồn cảm hứng để hoàn thành project này:
+
+- **Cảm hứng chính:** [Phoshco/model-viewer](https://github.com/Phoshco/model-viewer)
+- **Nguồn models:** [lihaohong6/BlueArchiveModels](https://github.com/lihaohong6/BlueArchiveModels)
+- **Nguồn MMD / Babylon Integration:** [noname0310/babylon-mmd](https://github.com/noname0310/babylon-mmd/)
+
 ## Support & Buy Me a Coffee
 
-Nếu bạn yêu thích dự án và muốn ủng hộ một tách cà phê cho tác giả:
+Nếu bạn yêu thích pj này và muốn ủng hộ một ổ bánh mì/cf/hủ tiếu cho mình:
 
 - **Chủ tài khoản:** VO ANH DUC
 - **Số tài khoản:** 1828517809
 - **Ngân hàng:** Vietcombank
-- Hoặc bấm vào nút **☕ Support / Buy Me a Coffee** góc trên bên phải màn hình để quét mã QR!
+- Hoặc bấm vào nút **☕ Support / Buy Me a Coffee** trên web !
 
-Chân thành cảm ơn sự đồng hành và ủng hộ của bạn! ❤️
+Chân thành cảm ơn sự ủng hộ của bạn! ❤️
