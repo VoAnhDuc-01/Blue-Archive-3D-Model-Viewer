@@ -236,7 +236,12 @@ Chân thành cảm ơn các dự án mã nguồn mở và tác giả đã cung c
 - **Nguồn models:** [lihaohong6/BlueArchiveModels](https://github.com/lihaohong6/BlueArchiveModels)
 - **Nguồn MMD / Babylon Integration:** [noname0310/babylon-mmd](https://github.com/noname0310/babylon-mmd/)
 
+
+
+
 ## Support & Buy Me a Coffee
+
+<img align="right" src="img/Mon0.png" alt="Mon" width="250"/>
 
 Nếu bạn yêu thích pj này và muốn ủng hộ một ổ bánh mì/cf/hủ tiếu cho mình:
 
