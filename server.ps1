@@ -1,6 +1,7 @@
 # ==============================================================================
 # Blue Archive 3D Model Viewer - Lightweight Native HTTP Server
 # Runs natively on Windows PowerShell (.NET HttpListener) without Node or Python
+# Supports Direct Character/Model Page URLs and SPA Routing
 # ==============================================================================
 
 $port = 8080
@@ -98,6 +99,41 @@ while ($listener.IsListening) {
                 $altPath = [System.IO.Path]::Combine($rootDir, $subPath)
                 if (Test-Path -Path $altPath -PathType Leaf) {
                     $localPath = $altPath
+                }
+            }
+
+            # Nested asset fallback (e.g. /Yuuka/style.css, /Yuuka/res/...)
+            if (-not (Test-Path -Path $localPath -PathType Leaf)) {
+                $ext = [System.IO.Path]::GetExtension($localPath).ToLower()
+                if ($ext -and $mimeTypes.ContainsKey($ext)) {
+                    $fileName = [System.IO.Path]::GetFileName($cleanPath)
+                    $rootFile = [System.IO.Path]::Combine($rootDir, $fileName)
+                    if (Test-Path -Path $rootFile -PathType Leaf) {
+                        $localPath = $rootFile
+                    } else {
+                        foreach ($folder in @("res", "img", "logo", "BlueArchiveModel")) {
+                            $idx = $cleanPath.IndexOf($folder + "\")
+                            if ($idx -ge 0) {
+                                $assetSub = $cleanPath.Substring($idx)
+                                $candAsset = [System.IO.Path]::Combine($rootDir, $assetSub)
+                                if (Test-Path -Path $candAsset -PathType Leaf) {
+                                    $localPath = $candAsset
+                                    break
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            # SPA Route Fallback: Any route without an asset extension serves index.html
+            if (-not (Test-Path -Path $localPath -PathType Leaf)) {
+                $ext = [System.IO.Path]::GetExtension($localPath).ToLower()
+                if ([string]::IsNullOrEmpty($ext) -or $ext -eq ".html") {
+                    $spaIndex = [System.IO.Path]::Combine($rootDir, "index.html")
+                    if (Test-Path -Path $spaIndex -PathType Leaf) {
+                        $localPath = $spaIndex
+                    }
                 }
             }
         }

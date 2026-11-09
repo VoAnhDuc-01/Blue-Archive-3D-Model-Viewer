@@ -90,8 +90,13 @@
         <!-- Character Name Overlay (Beside toolbar at left: 120px; top: 35px;) -->
         <header id="charNameOverlay" class="char-name-overlay fadeable" aria-label="Current Student Info">
             <div class="name-row">
+                <button id="btnPrevChar" class="char-nav-btn" title="Học sinh trước [Phím ← hoặc []" aria-label="Previous student">◀</button>
                 <h1 id="charPrimaryName" class="primary-name">Yuuka</h1>
+                <button id="btnNextChar" class="char-nav-btn" title="Học sinh tiếp theo [Phím → hoặc ]]" aria-label="Next student">▶</button>
                 <span id="charPartnerName" class="partner-name" style="display: none;">+ Kei</span>
+                <button id="btnShareModel" class="share-model-btn" title="Sao chép liên kết trang model này" aria-label="Copy model page link">
+                    <svg viewBox="0 0 24 24" width="15" height="15"><path fill="currentColor" d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+                </button>
             </div>
             
             <div class="meta-row">
@@ -247,6 +252,7 @@
                     <div class="shortcuts-grid">
                         <div class="shortcut-item"><kbd>M</kbd> <span>Mở Danh Sách Học Sinh (Menu 3 gạch)</span></div>
                         <div class="shortcut-item"><kbd>C</kbd> / <kbd>A</kbd> <span>Đổi Trang Phục Kế Tiếp (Alter)</span></div>
+                        <div class="shortcut-item"><kbd>←</kbd> / <kbd>→</kbd> <span>Chuyển Học Sinh Trước / Kế Tiếp</span></div>
                         <div class="shortcut-item"><kbd>Space</kbd> <span>Tạm Dừng / Tiếp Tục Animation</span></div>
                         <div class="shortcut-item"><kbd>T</kbd> <span>Bật / Tắt Tự Động Xoay 360° (Turntable)</span></div>
                         <div class="shortcut-item"><kbd>R</kbd> <span>Đặt Lại Góc Nhìn Camera Chính Diện</span></div>
@@ -332,7 +338,7 @@
             </div>
         </div>
         <div class="loading-text-group">
-            <h2 id="loadingTitle" class="loading-title">INITIALIZING KIVOTOS ARCHIVE...</h2>
+            <h2 id="loadingTitle" class="loading-title">Girls are now preparing...</h2>
             <p id="loadingSubtitle" class="loading-subtitle">Configuring 3D Engine & Camera Pipeline</p>
         </div>
         <div class="loading-bar-track">

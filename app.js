@@ -68,6 +68,9 @@
         charNameOverlay: document.getElementById("charNameOverlay"),
         charPrimaryName: document.getElementById("charPrimaryName"),
         charPartnerName: document.getElementById("charPartnerName"),
+        btnPrevChar: document.getElementById("btnPrevChar"),
+        btnNextChar: document.getElementById("btnNextChar"),
+        btnShareModel: document.getElementById("btnShareModel"),
         charSchoolTag: document.getElementById("charSchoolTag"),
         costumePills: document.getElementById("costumePills"),
 
@@ -138,9 +141,12 @@
         setTimeout(() => toast.remove(), 3200);
     }
 
+    const DEFAULT_LOADING_TITLE = "Girls are now preparing...";
+
     /** Update Loading Screen */
     function updateLoading(percent, title, subtitle) {
-        if (title && elements.loadingTitle) elements.loadingTitle.textContent = title;
+        const displayTitle = title || DEFAULT_LOADING_TITLE;
+        if (elements.loadingTitle) elements.loadingTitle.textContent = displayTitle;
         if (subtitle && elements.loadingSubtitle) elements.loadingSubtitle.textContent = subtitle;
         if (elements.loadingBarFill) {
             elements.loadingBarFill.style.width = Math.min(100, Math.max(0, percent)) + "%";
@@ -152,6 +158,163 @@
         } else {
             if (elements.loadingOverlay) elements.loadingOverlay.classList.add("visible");
         }
+    }
+
+    /** Build Canonical URL for a Student Model */
+    function buildModelUrl(student, model) {
+        if (!student || !model) return window.location.pathname;
+        const modelName = model.fullName || model.file.replace(/\.glb$/i, "");
+        const url = new URL(window.location.href);
+        url.searchParams.set("model", modelName);
+        url.searchParams.delete("character");
+        url.searchParams.delete("variant");
+        url.searchParams.delete("skin");
+        url.searchParams.delete("costume");
+        url.searchParams.delete("student");
+        url.searchParams.delete("char");
+        if (state.partnerModel) {
+            url.searchParams.set("partner", state.partnerModel.fullName || state.partnerModel.file.replace(/\.glb$/i, ""));
+        } else {
+            url.searchParams.delete("partner");
+        }
+        url.hash = "";
+        const cleanPath = url.pathname.replace(/\/index\.html$/i, "/");
+        return cleanPath + url.search;
+    }
+
+    /** Parse Model Information from current URL */
+    function parseModelFromUrl() {
+        const result = { query: null, character: null, variant: null, partner: null };
+
+        // 1. Search Query Parameters
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("model")) result.query = params.get("model");
+        if (params.get("character") || params.get("student") || params.get("char")) {
+            result.character = params.get("character") || params.get("student") || params.get("char");
+        }
+        if (params.get("variant") || params.get("skin") || params.get("costume")) {
+            result.variant = params.get("variant") || params.get("skin") || params.get("costume");
+        }
+        if (params.get("partner")) result.partner = params.get("partner");
+
+        if (result.query || result.character) return result;
+
+        // 2. Hash Routing (#/Yuuka, #Yuuka (Pajama), #/Yuuka/Pajama)
+        if (window.location.hash) {
+            let hash = decodeURIComponent(window.location.hash.replace(/^#\/?/, "").trim());
+            if (hash) {
+                if (hash.startsWith("model/")) hash = hash.substring(6);
+                const parts = hash.split("/").map(p => p.trim()).filter(Boolean);
+                if (parts.length >= 2) {
+                    result.character = parts[0];
+                    result.variant = parts[1];
+                    return result;
+                } else if (parts.length === 1) {
+                    result.query = parts[0];
+                    return result;
+                }
+            }
+        }
+
+        // 3. Pathname Routing (/Yuuka, /Yuuka/Pajama, /model/Yuuka)
+        let pathname = decodeURIComponent(window.location.pathname);
+        pathname = pathname.replace(/\/index\.html$/i, "").replace(/\/$/, "");
+        if (pathname && pathname !== "" && pathname !== "/") {
+            const segments = pathname.split("/").filter(Boolean);
+            if (segments.length > 0) {
+                // Ignore base directory if running in /ba-model-viewer/
+                if (segments[0].toLowerCase() === "ba-model-viewer") {
+                    segments.shift();
+                }
+            }
+            if (segments.length > 0 && !["res", "img", "logo", "BlueArchiveModel"].includes(segments[0])) {
+                let seg0 = segments[0];
+                if (seg0.toLowerCase() === "model" || seg0.toLowerCase() === "students") {
+                    segments.shift();
+                }
+                if (segments.length >= 2) {
+                    result.character = segments[0];
+                    result.variant = segments[1];
+                    return result;
+                } else if (segments.length === 1) {
+                    result.query = segments[0];
+                    return result;
+                }
+            }
+        }
+
+        return result.partner ? result : null;
+    }
+
+    /** Resolve Student and Model objects from parsed URL */
+    function resolveStudentAndModel(parsed) {
+        if (!state.studentsData || !state.studentsData.students) return null;
+        if (!parsed || (!parsed.query && !parsed.character)) return null;
+
+        const students = state.studentsData.students;
+        const normalize = (str) => (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+        // Match by exact query or model full name
+        if (parsed.query) {
+            const qRaw = parsed.query.trim().toLowerCase();
+            const qClean = normalize(parsed.query);
+
+            // A. Search by model full name or file
+            for (const s of students) {
+                for (const m of s.models) {
+                    const fullNameLower = (m.fullName || "").toLowerCase();
+                    const fileLower = (m.file || "").toLowerCase().replace(/\.glb$/i, "");
+                    if (fullNameLower === qRaw || fileLower === qRaw || normalize(m.fullName) === qClean || normalize(m.file) === qClean) {
+                        return { student: s, model: m };
+                    }
+                }
+            }
+
+            // B. Search by student name or id
+            for (const s of students) {
+                if (s.name.toLowerCase() === qRaw || s.id.toLowerCase() === qRaw || normalize(s.name) === qClean || normalize(s.id) === qClean) {
+                    const defaultModel = s.models.find(m => m.variant === "Default") || s.models[0];
+                    return { student: s, model: defaultModel };
+                }
+            }
+        }
+
+        // Match by character + variant
+        if (parsed.character) {
+            const cRaw = parsed.character.trim().toLowerCase();
+            const cClean = normalize(parsed.character);
+
+            const student = students.find(s => 
+                s.name.toLowerCase() === cRaw || 
+                s.id.toLowerCase() === cRaw || 
+                normalize(s.name) === cClean || 
+                normalize(s.id) === cClean
+            );
+
+            if (student) {
+                if (parsed.variant) {
+                    const vRaw = parsed.variant.trim().toLowerCase();
+                    const vClean = normalize(parsed.variant);
+                    const model = student.models.find(m => 
+                        m.variant.toLowerCase() === vRaw || 
+                        normalize(m.variant) === vClean || 
+                        normalize(m.fullName).includes(vClean)
+                    );
+                    if (model) return { student, model };
+                }
+                const defaultModel = student.models.find(m => m.variant === "Default") || student.models[0];
+                return { student, model: defaultModel };
+            }
+        }
+
+        return null;
+    }
+
+    /** Update Document Title and Page Metadata */
+    function updatePageMetadata(student, model) {
+        if (!student || !model) return;
+        const displayName = model.fullName || `${student.name} (${model.variant})`;
+        document.title = `${displayName} // Blue Archive 3D Model Viewer`;
     }
 
     /** Probe Valid Model Directory */
@@ -517,9 +680,10 @@
         if (!modelInfo || !modelInfo.file) return;
         const studentName = modelInfo.studentName || state.currentStudent?.name || "Student";
         const variantName = modelInfo.variant || "Default";
+        const displayName = modelInfo.fullName || `${studentName} (${variantName})`;
         const filename = modelInfo.file;
 
-        updateLoading(15, `DEPLOYING ${studentName.toUpperCase()}...`, `Fetching 3D asset (${modelInfo.sizeMB || 0} MB)...`);
+        updateLoading(15, "Girls are now preparing...", `Fetching 3D asset • ${displayName} (${modelInfo.sizeMB || 0} MB)...`);
 
         try {
             const rootUrl = resolvedModelPrefix;
@@ -537,7 +701,9 @@
             const container = await BABYLON.SceneLoader.LoadAssetContainerAsync(rootUrl, filename, scene, (event) => {
                 if (event.lengthComputable && event.total > 0) {
                     const pct = Math.floor((event.loaded / event.total) * 75) + 15;
-                    updateLoading(pct, `DEPLOYING ${studentName.toUpperCase()}...`, `${Math.floor(event.loaded / 1024 / 1024 * 10) / 10} MB / ${Math.floor(event.total / 1024 / 1024 * 10) / 10} MB`);
+                    const loadedMB = (event.loaded / (1024 * 1024)).toFixed(1);
+                    const totalMB = (event.total / (1024 * 1024)).toFixed(1);
+                    updateLoading(pct, "Girls are now preparing...", `${displayName} • ${loadedMB} MB / ${totalMB} MB`);
                 }
             });
 
@@ -598,8 +764,8 @@
             // Wireframe state
             if (state.isWireframe) applyWireframe(true);
 
-            updateLoading(100, "DEPLOYED SUCCESSFULLY", `${studentName} is ready.`);
-            showToast(`${studentName} (${variantName}) loaded.`);
+            updateLoading(100, "Girls are now preparing...", `${displayName} is ready.`);
+            showToast(`${displayName} loaded.`);
 
             updateUIInfo();
         } catch (error) {
@@ -749,25 +915,76 @@
         }
         const currentIdx = state.currentStudent.models.findIndex(m => m.file === state.currentModel.file);
         const nextIdx = (currentIdx + 1) % state.currentStudent.models.length;
-        state.currentModel = state.currentStudent.models[nextIdx];
-        loadStudentModel(state.currentModel, false);
+        const nextModel = state.currentStudent.models[nextIdx];
+        navigateToModel(state.currentStudent, nextModel);
     }
 
     /** Change Selected Student / Model */
     function changeStudent(student, modelIndex = 0) {
         const targetModel = student.models[modelIndex] || student.models[0];
+        navigateToModel(student, targetModel);
+    }
+
+    /** Navigate to a Student Model Page (Updates URL, Title, History & Loads 3D Model) */
+    function navigateToModel(student, model, push = true) {
+        if (!student || !model) return;
+
         if (state.isAddPartnerMode) {
             state.partnerStudent = student;
-            state.partnerModel = targetModel;
+            state.partnerModel = model;
             state.isAddPartnerMode = false;
             closeRosterModal();
             loadStudentModel(state.partnerModel, true);
+            const url = buildModelUrl(state.currentStudent, state.currentModel);
+            try {
+                history.replaceState({ studentId: state.currentStudent.id, modelFile: state.currentModel.file }, "", url);
+            } catch (_) {}
             return;
         }
+
+        if (state.currentStudent?.id === student.id && state.currentModel?.file === model.file) {
+            closeRosterModal();
+            return;
+        }
+
         state.currentStudent = student;
-        state.currentModel = targetModel;
+        state.currentModel = model;
+
+        updatePageMetadata(student, model);
+
+        const targetUrl = buildModelUrl(student, model);
+        try {
+            if (push) {
+                history.pushState({ studentId: student.id, modelFile: model.file }, "", targetUrl);
+            } else {
+                history.replaceState({ studentId: student.id, modelFile: model.file }, "", targetUrl);
+            }
+        } catch (_) {}
+
         closeRosterModal();
         loadStudentModel(state.currentModel, false);
+    }
+
+    /** Navigate to Previous Student Page */
+    function navigatePrevStudent() {
+        if (!state.studentsData || !state.studentsData.students) return;
+        const students = state.studentsData.students;
+        const currentIdx = students.findIndex(s => s.id === state.currentStudent?.id);
+        const prevIdx = (currentIdx - 1 + students.length) % students.length;
+        const targetStudent = students[prevIdx];
+        const defaultModel = targetStudent.models.find(m => m.variant === "Default") || targetStudent.models[0];
+        navigateToModel(targetStudent, defaultModel);
+    }
+
+    /** Navigate to Next Student Page */
+    function navigateNextStudent() {
+        if (!state.studentsData || !state.studentsData.students) return;
+        const students = state.studentsData.students;
+        const currentIdx = students.findIndex(s => s.id === state.currentStudent?.id);
+        const nextIdx = (currentIdx + 1) % students.length;
+        const targetStudent = students[nextIdx];
+        const defaultModel = targetStudent.models.find(m => m.variant === "Default") || targetStudent.models[0];
+        navigateToModel(targetStudent, defaultModel);
     }
 
     /** Remove Partner Student */
@@ -784,6 +1001,10 @@
         state.partnerModel = null;
         if (primaryRootNode) primaryRootNode.position.x = 0;
         updateUIInfo();
+        const url = buildModelUrl(state.currentStudent, state.currentModel);
+        try {
+            history.replaceState({ studentId: state.currentStudent.id, modelFile: state.currentModel.file }, "", url);
+        } catch (_) {}
         showToast("Partner student removed.");
     }
 
@@ -831,15 +1052,18 @@
         // Direct Quick Costume Buttons beside student name
         if (elements.costumePills) {
             elements.costumePills.innerHTML = "";
-            state.currentStudent.models.forEach((m, idx) => {
-                const btn = document.createElement("button");
+            state.currentStudent.models.forEach((m) => {
+                const btn = document.createElement("a");
+                btn.href = buildModelUrl(state.currentStudent, m);
                 btn.className = `costume-quick-btn ${m.file === state.currentModel.file ? "active" : ""}`;
                 btn.textContent = m.variant;
-                btn.title = `Switch to ${m.variant}`;
-                btn.onclick = () => {
-                    if (m.file !== state.currentModel.file) {
-                        state.currentModel = m;
-                        loadStudentModel(m, false);
+                btn.title = `Chuyển sang trang: ${m.fullName || m.variant}`;
+                btn.onclick = (e) => {
+                    if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+                        e.preventDefault();
+                        if (m.file !== state.currentModel.file) {
+                            navigateToModel(state.currentStudent, m);
+                        }
                     }
                 };
                 elements.costumePills.appendChild(btn);
@@ -898,7 +1122,9 @@
             const initials = student.name.slice(0, 2).toUpperCase();
 
             // Header (Avatar initials + Student Name + School)
-            const header = document.createElement("div");
+            const defaultModel = student.models.find(m => m.variant === "Default") || student.models[0];
+            const header = document.createElement("a");
+            header.href = buildModelUrl(student, defaultModel);
             header.className = "student-card-header";
             header.innerHTML = `
                 <div class="student-avatar-thumb">${initials}</div>
@@ -908,7 +1134,12 @@
                 </div>
             `;
             // Clicking header loads default model
-            header.onclick = () => changeStudent(student, 0);
+            header.onclick = (e) => {
+                if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+                    e.preventDefault();
+                    changeStudent(student, 0);
+                }
+            };
             card.appendChild(header);
 
             // Models / Costumes List inside the card
@@ -916,7 +1147,8 @@
             modelsGroup.className = "models-list-group";
 
             student.models.forEach((m, idx) => {
-                const btn = document.createElement("button");
+                const btn = document.createElement("a");
+                btn.href = buildModelUrl(student, m);
                 const isSelected = isCurrent && state.currentModel && state.currentModel.file === m.file;
                 btn.className = `model-pick-btn ${isSelected ? "active" : ""}`;
                 btn.innerHTML = `
@@ -924,8 +1156,11 @@
                     <span class="model-pick-size">${m.sizeMB ? m.sizeMB + " MB" : ""}</span>
                 `;
                 btn.onclick = (e) => {
-                    e.stopPropagation();
-                    changeStudent(student, idx);
+                    if (!e.ctrlKey && !e.metaKey && !e.shiftKey && e.button === 0) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        changeStudent(student, idx);
+                    }
                 };
                 modelsGroup.appendChild(btn);
             });
@@ -1310,6 +1545,59 @@
             };
         }
 
+        // Previous / Next Student Buttons
+        if (elements.btnPrevChar) {
+            elements.btnPrevChar.onclick = (e) => {
+                e.stopPropagation();
+                navigatePrevStudent();
+            };
+        }
+        if (elements.btnNextChar) {
+            elements.btnNextChar.onclick = (e) => {
+                e.stopPropagation();
+                navigateNextStudent();
+            };
+        }
+
+        // Share / Copy Link Button
+        if (elements.btnShareModel) {
+            elements.btnShareModel.onclick = (e) => {
+                e.stopPropagation();
+                const shareUrl = window.location.href;
+                const displayName = state.currentModel?.fullName || state.currentStudent?.name || "Model";
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        showToast(`Đã sao chép liên kết trang: ${displayName}`);
+                    }).catch(() => {
+                        window.prompt("Liên kết trang model:", shareUrl);
+                    });
+                } else {
+                    window.prompt("Liên kết trang model:", shareUrl);
+                }
+            };
+        }
+
+        // Browser History Back / Forward navigation (PopState & HashChange)
+        window.addEventListener("popstate", () => {
+            const parsed = parseModelFromUrl();
+            const resolved = resolveStudentAndModel(parsed);
+            if (resolved) {
+                if (state.currentStudent?.id !== resolved.student.id || state.currentModel?.file !== resolved.model.file) {
+                    navigateToModel(resolved.student, resolved.model, false);
+                }
+            }
+        });
+
+        window.addEventListener("hashchange", () => {
+            const parsed = parseModelFromUrl();
+            const resolved = resolveStudentAndModel(parsed);
+            if (resolved) {
+                if (state.currentStudent?.id !== resolved.student.id || state.currentModel?.file !== resolved.model.file) {
+                    navigateToModel(resolved.student, resolved.model, false);
+                }
+            }
+        });
+
         // Backdrop click to close modals
         window.addEventListener("click", (e) => {
             if (e.target === elements.characterPanel) closeRosterModal();
@@ -1331,6 +1619,10 @@
                 }
             } else if (key === "c" || key === "a") {
                 cycleCostume();
+            } else if (e.key === "ArrowLeft" || key === "[") {
+                navigatePrevStudent();
+            } else if (e.key === "ArrowRight" || key === "]") {
+                navigateNextStudent();
             } else if (e.code === "Space") {
                 e.preventDefault();
                 if (state.isPlaying) pauseAnimation();
@@ -1363,7 +1655,7 @@
             // 1. BIND UI EVENTS FIRST - This guarantees every button works immediately!
             bindEvents();
 
-            updateLoading(10, "INITIALIZING KIVOTOS ARCHIVE...", "Setting up 3D engine...");
+            updateLoading(10, "Girls are now preparing...", "Setting up 3D engine...");
 
             // 2. Load students roster
             if (window.STUDENTS_DATA && window.STUDENTS_DATA.students) {
@@ -1374,11 +1666,37 @@
                 state.studentsData = await resp.json();
             }
 
-            // 3. Find default student (Yuuka)
-            state.currentStudent = state.studentsData.students.find(s => s.name === CONFIG.defaultStudent) 
-                || state.studentsData.students[0];
-            state.currentModel = state.currentStudent.models.find(m => m.variant === "Default") 
-                || state.currentStudent.models[0];
+            // 3. Resolve requested student/model from URL, or default to Yuuka
+            const parsed = parseModelFromUrl();
+            const resolved = resolveStudentAndModel(parsed);
+            if (resolved) {
+                state.currentStudent = resolved.student;
+                state.currentModel = resolved.model;
+            } else {
+                state.currentStudent = state.studentsData.students.find(s => s.name === CONFIG.defaultStudent) 
+                    || state.studentsData.students[0];
+                state.currentModel = state.currentStudent.models.find(m => m.variant === "Default") 
+                    || state.currentStudent.models[0];
+            }
+
+            // Sync canonical URL & document title
+            try {
+                history.replaceState(
+                    { studentId: state.currentStudent.id, modelFile: state.currentModel.file },
+                    "",
+                    buildModelUrl(state.currentStudent, state.currentModel)
+                );
+            } catch (_) {}
+            updatePageMetadata(state.currentStudent, state.currentModel);
+
+            // Optional partner in URL (?partner=...)
+            if (parsed && parsed.partner) {
+                const partnerRes = resolveStudentAndModel({ query: parsed.partner });
+                if (partnerRes && partnerRes.student.id !== state.currentStudent.id) {
+                    state.partnerStudent = partnerRes.student;
+                    state.partnerModel = partnerRes.model;
+                }
+            }
 
             updateUIInfo();
 
@@ -1391,9 +1709,14 @@
             // 6. Determine model prefix
             await determineModelPrefix();
 
-            // 7. Load Default Model
-            updateLoading(35, "LOADING DEFAULT MODEL...", `Loading ${state.currentStudent.name}...`);
+            // 7. Load Initial Model
+            const initialDisplayName = state.currentModel.fullName || `${state.currentStudent.name} (${state.currentModel.variant})`;
+            updateLoading(35, "Girls are now preparing...", `Loading ${initialDisplayName}...`);
             await loadStudentModel(state.currentModel, false);
+
+            if (state.partnerModel) {
+                await loadStudentModel(state.partnerModel, true);
+            }
 
             updateLoading(100);
         } catch (err) {
